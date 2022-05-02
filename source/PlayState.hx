@@ -66,6 +66,7 @@ class PlayState extends MusicBeatState
 	public static var STRUM_X = 42;
 	public static var STRUM_X_MIDDLESCROLL = -278;
 
+	// Array representing all ratings with floats
 	public static var ratingStuff:Array<Dynamic> = [
 		['You Suck!', 0.2], //From 0% to 19%
 		['Shit', 0.4], //From 20% to 39%
@@ -78,15 +79,30 @@ class PlayState extends MusicBeatState
 		['Sick!', 1], //From 90% to 99%
 		['Perfect!!', 1] //The value on this one isn't used actually, since Perfect is always "1"
 	];
-	public var modchartTweens:Map<String, FlxTween> = new Map<String, FlxTween>();
-	public var modchartSprites:Map<String, ModchartSprite> = new Map<String, ModchartSprite>();
-	public var modchartTimers:Map<String, FlxTimer> = new Map<String, FlxTimer>();
-	public var modchartSounds:Map<String, FlxSound> = new Map<String, FlxSound>();
-	public var modchartTexts:Map<String, ModchartText> = new Map<String, ModchartText>();
-	public var modchartSaves:Map<String, FlxSave> = new Map<String, FlxSave>();
-	//event variables
+
+
+	/*
+	A Map is a multi-type abstract, it's also known as a "dictionary".
+	It allows for key-to-value mapping for arbitrary value types and many key types
+	(whatever that means)
+
+	// https://code.haxe.org/category/beginner/maps.html
+	*/
+
+	// Maps containing different modchart elements
+	public var modchartTweens:Map<String, FlxTween> = new Map<String, FlxTween>(); // This contains all modchart tweens
+	public var modchartSprites:Map<String, ModchartSprite> = new Map<String, ModchartSprite>(); // This contains all modchart sprites
+	public var modchartTimers:Map<String, FlxTimer> = new Map<String, FlxTimer>(); // This contains all modchart timers
+	public var modchartSounds:Map<String, FlxSound> = new Map<String, FlxSound>(); // This contains all modchart sounds, not used
+	public var modchartTexts:Map<String, ModchartText> = new Map<String, ModchartText>(); // This contains all modchart text objects, unused
+	public var modchartSaves:Map<String, FlxSave> = new Map<String, FlxSave>(); // This contains all modchart "saves"...doesn't seem to be used either
+
+	//event variables // who wrote this what does this mean
+
+	// This boolean stores whether or not camera is on a forced position
 	private var isCameraOnForcedPos:Bool = false;
-	#if (haxe >= "4.0.0")
+
+	#if (haxe >= "4.0.0") // Maps for boyfriend, dad and gf
 	public var boyfriendMap:Map<String, Boyfriend> = new Map();
 	public var dadMap:Map<String, Character> = new Map();
 	public var gfMap:Map<String, Character> = new Map();
@@ -96,6 +112,7 @@ class PlayState extends MusicBeatState
 	public var gfMap:Map<String, Character> = new Map<String, Character>();
 	#end
 
+	// These variables store the X and Y values for the boyfriend, dad and gf
 	public var BF_X:Float = 770;
 	public var BF_Y:Float = 100;
 	public var DAD_X:Float = 100;
@@ -103,92 +120,99 @@ class PlayState extends MusicBeatState
 	public var GF_X:Float = 400;
 	public var GF_Y:Float = 130;
 
-	public var songSpeedTween:FlxTween;
-	public var songSpeed(default, set):Float = 1;
-	public var songSpeedType:String = "multiplicative";
-	public var noteKillOffset:Float = 350;
+	public var songSpeedTween:FlxTween; // This variable stores a tween for the song's scroll speed (used in the'Change Scroll Speed' event)
+	public var songSpeed(default, set):Float = 1; // This variable stores the song's speed
+	public var songSpeedType:String = "multiplicative"; // This variable stores what the type of speed the song has ("multiplicative" and "constant")
+ 	public var noteKillOffset:Float = 350; // This variable stores what the necessarry offset is for missing a note (used to decide if a note should be missed)
 	
-	public var boyfriendGroup:FlxSpriteGroup;
-	public var dadGroup:FlxSpriteGroup;
-	public var gfGroup:FlxSpriteGroup;
-	public static var curStage:String = '';
-	public static var isPixelStage:Bool = false;
-	public static var SONG:SwagSong = null;
-	public static var isStoryMode:Bool = false;
-	public static var storyWeek:Int = 0;
-	public static var storyPlaylist:Array<String> = [];
-	public static var storyDifficulty:Int = 1;
+	public var boyfriendGroup:FlxSpriteGroup; // The SpriteGroup for boyfriend, kind of like a layer that can store multiple sprites
+	public var dadGroup:FlxSpriteGroup; // The SpriteGroup for dad
+	public var gfGroup:FlxSpriteGroup; // Same as above
+	public static var curStage:String = ''; // Stores the current stage's name
+	public static var isPixelStage:Bool = false; // Stores whether or not the stage is a pixel stage
+	public static var SONG:SwagSong = null; // Stores the song's json contents (notes, bpm, characters...)
+	public static var isStoryMode:Bool = false; // Stores if the player is in Story Mode
+	public static var storyWeek:Int = 0; // Stores what story week the song is from/player is playing
+	public static var storyPlaylist:Array<String> = []; // Array storing the songs in the current week (used for going back to Story Mode, achievements)
+	public static var storyDifficulty:Int = 1; // The current song's difficulty, as a number! (with no extra difficulties, Easy = 0, Normal = 1, Hard = 2)
 
-	public var vocals:FlxSound;
+	public var vocals:FlxSound; // Sound object storing the vocals for the song
 
-	public var dad:Character = null;
-	public var gf:Character = null;
-	public var boyfriend:Boyfriend = null;
+	public var dad:Character = null; // The dad Character object (Characters have their own Class)
+	public var gf:Character = null; // The gf Character object
+	public var boyfriend:Boyfriend = null; // The boyfriend Character object
+	// (they do cool stuff like singing)
 
-	public var notes:FlxTypedGroup<Note>;
-	public var unspawnNotes:Array<Note> = [];
-	public var eventNotes:Array<EventNote> = [];
 
-	private var strumLine:FlxSprite;
+	// A TypedGroup is an organizational class that uhhhhhh idk you can do stuff with sprites
+	// https://api.haxeflixel.com/flixel/group/FlxTypedGroup.html
 
-	//Handles the new epic mega sexy cam code that i've done
-	private var camFollow:FlxPoint;
-	private var camFollowPos:FlxObject;
-	private static var prevCamFollow:FlxPoint;
-	private static var prevCamFollowPos:FlxObject;
+	public var notes:FlxTypedGroup<Note>; // TypedGroup storing all notes, the ones that you hit, they have a special Class named 'Note'
+	public var unspawnNotes:Array<Note> = []; // Array... I think it stores all unspawned notes or something
+	public var eventNotes:Array<EventNote> = []; // Array storing all event notes (events)
 
-	public var strumLineNotes:FlxTypedGroup<StrumNote>;
-	public var opponentStrums:FlxTypedGroup<StrumNote>;
-	public var playerStrums:FlxTypedGroup<StrumNote>;
-	public var grpNoteSplashes:FlxTypedGroup<NoteSplash>;
+	private var strumLine:FlxSprite; // Sprite that stores the strum line, the thingy with the notes
 
-	public var camZooming:Bool = false;
-	private var curSong:String = "";
+	//Handles the new epic mega sexy cam code that i've done // i agree
+	private var camFollow:FlxPoint; // Point where the camera should look (x, y values)
+	private var camFollowPos:FlxObject; // Object the camera should follow
+	private static var prevCamFollow:FlxPoint; // The previous point the camera was supposed to look at
+	private static var prevCamFollowPos:FlxObject; // The previous object the camera was supposed to follow
 
-	public var gfSpeed:Int = 1;
-	public var health:Float = 1;
-	public var combo:Int = 0;
+	public var strumLineNotes:FlxTypedGroup<StrumNote>; // The actual strum notes in the strum line (this has all receptors)
+	public var opponentStrums:FlxTypedGroup<StrumNote>; // The OPPONENT's strum notes, or receptors
+	public var playerStrums:FlxTypedGroup<StrumNote>; // The PLAYER's strum notes
+	public var grpNoteSplashes:FlxTypedGroup<NoteSplash>; // TypedGroup for the note splashes when you hit a sick
 
-	private var healthBarBG:AttachedSprite;
-	public var healthBar:FlxBar;
-	var songPercent:Float = 0;
+	public var camZooming:Bool = false; // If the camera is zooming
+	private var curSong:String = ""; // What the name of the current song is
 
-	private var timeBarBG:AttachedSprite;
-	public var timeBar:FlxBar;
+	public var gfSpeed:Int = 1; // The speed of gf's head bobbing
+	public var health:Float = 1; // The amount of health
+	public var combo:Int = 0; // The current combo
+
+	private var healthBarBG:AttachedSprite; // The health bar's background, idk what an AttachedSprite is
+	public var healthBar:FlxBar; // The health bar, didn't know that was a thing (https://api.haxeflixel.com/flixel/ui/FlxBar.html)
+	var songPercent:Float = 0; // How far the song has progressed
+
+	private var timeBarBG:AttachedSprite; // The time bar's background
+	public var timeBar:FlxBar; // The time bar itself
 	
-	public var sicks:Int = 0;
-	public var goods:Int = 0;
-	public var bads:Int = 0;
-	public var shits:Int = 0;
+	public var sicks:Int = 0; // The number of sicks
+	public var goods:Int = 0; // The number of goods
+	public var bads:Int = 0; // The number of bads
+	public var shits:Int = 0; // The number of shits
 	
-	private var generatedMusic:Bool = false;
-	public var endingSong:Bool = false;
-	public var startingSong:Bool = false;
-	private var updateTime:Bool = true;
-	public static var changedDifficulty:Bool = false;
-	public static var chartingMode:Bool = false;
+	private var generatedMusic:Bool = false; // If the song was generated ?
+	public var endingSong:Bool = false; // If the song is ending
+	public var startingSong:Bool = false; // If the song is starting
+	private var updateTime:Bool = true; // Whether to update the time or not
+	public static var changedDifficulty:Bool = false; // If the difficulty was changed
+	public static var chartingMode:Bool = false; // If the player is in charting mode (true if the player comes back from the chart editor)
 
 	//Gameplay settings
-	public var healthGain:Float = 1;
-	public var healthLoss:Float = 1;
-	public var instakillOnMiss:Bool = false;
-	public var cpuControlled:Bool = false;
-	public var practiceMode:Bool = false;
+	public var healthGain:Float = 1; // The health gain multiplier
+	public var healthLoss:Float = 1; // The health loss multiplier
+	public var instakillOnMiss:Bool = false; // If the player should die in one miss
+	public var cpuControlled:Bool = false; // If Botplay is on
+	public var practiceMode:Bool = false; // If practice mode is turned on
 
-	public var botplaySine:Float = 0;
-	public var botplayTxt:FlxText;
+	public var botplaySine:Float = 0; // The Botplay sine, controls the transparency of the botplay text
+	public var botplayTxt:FlxText; // The Botplay Text object
 
-	public var iconP1:HealthIcon;
-	public var iconP2:HealthIcon;
-	public var camHUD:FlxCamera;
-	public var camGame:FlxCamera;
-	public var camOther:FlxCamera;
-	public var cameraSpeed:Float = 1;
+	public var iconP1:HealthIcon; // The player 1 health icon, probably boyfriend, i forgot
+	public var iconP2:HealthIcon; // The player 2 health icon
+	public var camHUD:FlxCamera; // The HUD camera (notes, health bar, time bar...)
+	public var camGame:FlxCamera; // The Game camera (character sprites, background sprites...)
+	public var camOther:FlxCamera; // The Other camera (great for modding (i think))
+	public var cameraSpeed:Float = 1; // The camera's speed
 
-	var dialogue:Array<String> = ['blah blah blah', 'coolswag'];
-	var dialogueJson:DialogueFile = null;
+	var dialogue:Array<String> = ['blah blah blah', 'coolswag']; // Placeholder array for dialogue
+	var dialogueJson:DialogueFile = null; // The song's dialogue's json file, if any
 
-	var halloweenBG:BGSprite;
+
+	// /!\ Everything down to the next comment is just for the original 6 weeks and tutorial /!\
+	var halloweenBG:BGSprite; 
 	var halloweenWhite:BGSprite;
 
 	var phillyCityLights:FlxTypedGroup<BGSprite>;
@@ -219,46 +243,46 @@ class PlayState extends MusicBeatState
 	var wiggleShit:WiggleEffect = new WiggleEffect();
 	var bgGhouls:BGSprite;
 
-	public var songScore:Int = 0;
-	public var songHits:Int = 0;
-	public var songMisses:Int = 0;
-	public var scoreTxt:FlxText;
-	var timeTxt:FlxText;
-	var scoreTxtTween:FlxTween;
+	public var songScore:Int = 0; // The current score
+	public var songHits:Int = 0; // The amount of notes hit
+	public var songMisses:Int = 0; // The amount of notes missed
+	public var scoreTxt:FlxText; // The score Text object
+	var timeTxt:FlxText; // The time Text object
+	var scoreTxtTween:FlxTween; // The score text Tween object (i don't remember seeing this in-game)
 
-	public static var campaignScore:Int = 0;
-	public static var campaignMisses:Int = 0;
-	public static var seenCutscene:Bool = false;
-	public static var deathCounter:Int = 0;
+	public static var campaignScore:Int = 0; // The accumulated score of every song played in the week
+	public static var campaignMisses:Int = 0; // The accumulated misses of every song played in the week (used to award the player with no-miss achievements)
+	public static var seenCutscene:Bool = false; // If the player has seen the cutscene
+	public static var deathCounter:Int = 0; // The amount of times the player died (the blueball counter)
 
-	public var defaultCamZoom:Float = 1.05;
+	public var defaultCamZoom:Float = 1.05; // The default cam zoom amount, when a beat is hit
 
 	// how big to stretch the pixel art assets
 	public static var daPixelZoom:Float = 6;
-	private var singAnimations:Array<String> = ['singLEFT', 'singDOWN', 'singUP', 'singRIGHT'];
+	private var singAnimations:Array<String> = ['singLEFT', 'singDOWN', 'singUP', 'singRIGHT']; // Self explanatory (like almost all vars), stores the sing animation names
 
-	public var inCutscene:Bool = false;
-	public var skipCountdown:Bool = false;
-	var songLength:Float = 0;
+	public var inCutscene:Bool = false; // If the player is in/watching a cutscene
+	public var skipCountdown:Bool = false; // Whether to skip the countdown at the start of the song
+	var songLength:Float = 0; // The song length (set later when the song starts)
 
-	public var boyfriendCameraOffset:Array<Float> = null;
-	public var opponentCameraOffset:Array<Float> = null;
-	public var girlfriendCameraOffset:Array<Float> = null;
+	public var boyfriendCameraOffset:Array<Float> = null; // Boyfriend's cam offset (the one in the Character Editor)
+	public var opponentCameraOffset:Array<Float> = null; // Same as boyfriend, for the opponent
+	public var girlfriendCameraOffset:Array<Float> = null; // Same as above
 
 	#if desktop
-	// Discord RPC variables
+	// Discord RPC variables // You know in Discord when you look at someone's profile and it tells you what game they're playing ? It's for that
 	var storyDifficultyText:String = "";
 	var detailsText:String = "";
 	var detailsPausedText:String = "";
 	#end
 
 	//Achievement shit
-	var keysPressed:Array<Bool> = [];
-	var boyfriendIdleTime:Float = 0.0;
-	var boyfriendIdled:Bool = false;
+	var keysPressed:Array<Bool> = []; // Stores the keys that were pressed (used for the Just the Two of Us achievement)
+	var boyfriendIdleTime:Float = 0.0; // How long boyfriend has been idle (used for the Hyperactive achievement)
+	var boyfriendIdled:Bool = false; // If boyfriend idled
 
 	// Lua shit
-	public static var instance:PlayState;
+	public static var instance:PlayState; // For Lua, so you can get properties and stuff ( getProperty() )
 	public var luaArray:Array<FunkinLua> = [];
 	private var luaDebugGroup:FlxTypedGroup<DebugLuaText>;
 	public var introSoundsSuffix:String = '';
